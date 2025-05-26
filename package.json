@@ -1,0 +1,31 @@
+{
+  "name": "rpc-online",
+  "version": "1.0.0",
+  "description": "A multiplayer Rock Paper Scissors game with both Python GUI and web interface support",
+  "main": "src/web/index.js",
+  "scripts": {
+    "start": "node src/web/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ForRealy/RPC-ONLINE.git"
+  },
+  "keywords": [
+    "game",
+    "rock-paper-scissors",
+    "multiplayer",
+    "firebase"
+  ],
+  "author": "ForRealy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ForRealy/RPC-ONLINE/issues"
+  },
+  "homepage": "https://github.com/ForRealy/RPC-ONLINE#readme",
+  "dependencies": {
+    "firebase": "^11.8.1",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}
