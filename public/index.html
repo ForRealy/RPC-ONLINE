@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RPS 2v2 Online</title>
+  <title>RPS Online</title>
   <link rel="stylesheet" href="style.css">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
@@ -11,27 +12,58 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
 </head>
 <body>
-  <div id="auth">
-    <h2>Registro / Login</h2>
-    <input id="email" type="email" placeholder="Correo">
-    <input id="password" type="password" placeholder="Contraseña">
-    <button id="btn-register">Registrar</button>
-    <button id="btn-login">Entrar</button>
-  </div>
-  <div id="game" style="display:none;">
-    <h2>RPS 2v2 Online</h2>
-    <div id="room-setup">
-      <input id="room-id" placeholder="ID de sala">
-      <button id="btn-create">Crear sala</button>
-      <button id="btn-join">Unirse</button>
-    </div>
-    <div id="board" style="display:none;">
-      <!-- Mostrar jugadores, opciones, temporizador -->
-      <div id="players"></div>
-      <div id="choices"></div>
-      <div id="timer"></div>
-    </div>
-  </div>
-  <script type="module" src="main.js"></script>
+  <header>
+    <nav class="tabs">
+      <button class="tab-btn active" data-target="tab-auth">Login</button>
+      <button class="tab-btn" data-target="tab-game">Juego</button>
+      <button class="tab-btn" data-target="tab-settings">Ajustes</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TAB: Auth -->
+    <section id="tab-auth" class="tab-content active">
+      <h2>Registro / Login</h2>
+      <input id="email" type="email" placeholder="Correo">
+      <input id="password" type="password" placeholder="Contraseña">
+      <button id="btn-register">Registrar</button>
+      <button id="btn-login">Entrar</button>
+    </section>
+
+    <!-- TAB: Juego -->
+    <section id="tab-game" class="tab-content">
+      <h2>RPS Online</h2>
+      <div class="mode-select">
+        <label><input type="radio" name="mode" value="1v1" checked> 1 vs 1</label>
+        <label><input type="radio" name="mode" value="2v2"> 2 vs 2</label>
+      </div>
+      <div id="room-setup">
+        <input id="room-id" placeholder="ID de sala">
+        <button id="btn-create">Crear sala</button>
+        <button id="btn-join">Unirse</button>
+      </div>
+      <div id="board">
+        <div id="players"></div>
+        <div id="choices"></div>
+        <div id="timer"></div>
+      </div>
+    </section>
+
+    <!-- TAB: Settings -->
+    <section id="tab-settings" class="tab-content">
+      <h2>Ajustes</h2>
+      <div class="setting-item">
+        <label for="victories">Victorias necesarias:</label>
+        <input id="victories" type="number" min="1" value="3">
+      </div>
+      <div class="setting-item">
+        <label for="time-limit">Límite de tiempo (s):</label>
+        <input id="time-limit" type="number" min="5" value="10">
+      </div>
+    </section>
+  </main>
+
+  <script src="tabs.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

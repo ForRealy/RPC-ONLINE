@@ -1,6 +1,19 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+    "games": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["status"],
+      "$gameId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "players": {
+          "$uid": {
+            ".read": "auth != null",
+            ".write": "auth != null && ($uid === auth.uid || !data.exists())"
+          }
+        }
+      }
+    }
   }
 }
