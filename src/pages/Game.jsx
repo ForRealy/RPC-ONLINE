@@ -361,14 +361,22 @@ export default function Game() {
                   <div className="space-y-4">
                     <p className="text-center">Make your choice:</p>
                     {opponentName && <p className="text-center">Playing against: {opponentName}</p>}
-                    <div className="flex justify-center space-x-4">
+                    <div className="flex justify-center space-x-8">
                       {CHOICES.map((choice) => (
                         <button
                           key={choice}
                           onClick={() => makeChoice(choice)}
-                          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                          className="transform hover:scale-110 transition-all duration-300 focus:outline-none"
                         >
-                          {choice}
+                          <img
+                            src={`/images/${choice}.png`}
+                            alt={choice}
+                            className="w-24 h-24 object-contain"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `/images/${choice}.jpg`;
+                            }}
+                          />
                         </button>
                       ))}
                     </div>
@@ -379,8 +387,34 @@ export default function Game() {
                 {gameState === 'playing' && playerChoice && (
                   <div className="text-center space-y-4">
                     <p>Waiting for opponent's choice...</p>
-                    <p>Your choice: {playerChoice}</p>
-                    {opponentName && <p>Opponent: {opponentName}</p>}
+                    <div className="flex justify-around">
+                      <div className="flex flex-col items-center">
+                        <p className="font-semibold">You</p>
+                        <img 
+                          src={`/images/${playerChoice}.png`} 
+                          alt={playerChoice} 
+                          className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `/images/${playerChoice}.jpg`;
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <p className="font-semibold">Opponent</p>
+                        {opponentChoice && (
+                          <img 
+                            src={`/images/${opponentChoice}.png`} 
+                            alt={opponentChoice} 
+                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `/images/${opponentChoice}.jpg`;
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
                     <LeaveGameButton onClick={leaveGame} gameState={gameState} />
                   </div>
                 )}
@@ -389,16 +423,40 @@ export default function Game() {
                   <div className="space-y-4">
                     <div className="text-center space-y-2">
                       <h3 className="text-xl font-semibold">Game Results</h3>
-                      <p>Your choice: {playerChoice}</p>
-                      <p>Opponent's choice: {opponentChoice}</p>
-                      <p className={`text-lg font-bold ${
+                      <div className="flex justify-around">
+                        <div className="flex flex-col items-center">
+                          <p className="font-semibold">You</p>
+                          <img 
+                            src={`/images/${playerChoice}.png`} 
+                            alt={playerChoice} 
+                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `/images/${playerChoice}.jpg`;
+                            }}
+                          />
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <p className="font-semibold">Opponent</p>
+                          <img 
+                            src={`/images/${opponentChoice}.png`} 
+                            alt={opponentChoice} 
+                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `/images/${opponentChoice}.jpg`;
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <p className={`text-2xl font-bold ${
                         result === 'win' ? 'text-green-600' :
                         result === 'lose' ? 'text-red-600' :
                         'text-blue-600'
                       }`}>
-                        {result === 'win' ? 'You Won!' :
-                         result === 'lose' ? 'You Lost!' :
-                         'It\'s a Tie!'}
+                        {result === 'win' ? 'You Won! 🎉' :
+                         result === 'lose' ? 'You Lost! 😢' :
+                         'It\'s a Tie! 🤝'}
                       </p>
                     </div>
 
@@ -417,11 +475,11 @@ export default function Game() {
                       <button
                         onClick={playAgain}
                         disabled={wantsToPlayAgain || opponentLeft}
-                        className={`w-full px-4 py-2 rounded 
+                        className={`w-full px-4 py-2 rounded transform hover:scale-105 transition-all duration-300
                           ${wantsToPlayAgain || opponentLeft
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-green-500 hover:bg-green-600'} 
-                          text-white`}
+                          text-white font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50`}
                       >
                         {opponentLeft ? 'Opponent Left' : 'Play Again'}
                       </button>
