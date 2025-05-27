@@ -5,6 +5,9 @@ import Home from './pages/Home'
 import Game from './pages/Game'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ResetPassword from './pages/ResetPassword'
+import EmailVerificationPrompt from './pages/EmailVerificationPrompt'
+import VerifyEmail from './pages/VerifyEmail'
 
 function App() {
   return (
@@ -15,6 +18,10 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify" element={<EmailVerificationPrompt />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+
             <Route
               path="/game"
               element={

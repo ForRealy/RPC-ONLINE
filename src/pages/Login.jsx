@@ -7,7 +7,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, loginWithGoogle } = useAuth()
+  const { login, loginWithGoogle, currentUser } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
@@ -17,7 +17,11 @@ export default function Login() {
       setError('')
       setLoading(true)
       await login(email, password)
-      navigate('/')
+      if (currentUser && !currentUser.emailVerified) {
+        navigate('/verify')
+      } else {
+        navigate('/')
+      }
     } catch (error) {
       setError('Failed to sign in: ' + error.message)
     }
@@ -71,6 +75,11 @@ export default function Login() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                       placeholder="Enter your password"
                     />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Link to="/reset-password" className="text-sm text-blue-600 hover:text-blue-800">
+                      Forgot Password?
+                    </Link>
                   </div>
                   <button
                     disabled={loading}

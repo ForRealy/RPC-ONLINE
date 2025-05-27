@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { database } from '../config/firebase'
 import { ref, set, onValue, remove, query, orderByChild, equalTo, get, update, serverTimestamp } from 'firebase/database'
+import LeaveGameButton from '../components/LeaveGameButton'
 
 const CHOICES = ['rock', 'paper', 'scissors']
 
@@ -20,6 +21,7 @@ export default function Game() {
   const gameInitialized = useRef(false)
   const { currentUser } = useAuth()
   const navigate = useNavigate()
+  const [notification, setNotification] = useState('')
 
   const findOrCreateGame = useCallback(async () => {
     if (!currentUser || isSearching || gameInitialized.current) return
@@ -142,6 +144,9 @@ export default function Game() {
           setOpponentWantsToPlayAgain(false)
           setOpponentLeft(true)
           setGameState('finished')
+          setNotification('Opponent has left the game')
+          // Clear notification after 3 seconds
+          setTimeout(() => setNotification(''), 3000)
         }
 
         // Check if both players have made their choices
@@ -337,17 +342,18 @@ export default function Game() {
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-2xl font-bold">Rock Paper Scissors</h2>
-                  <button
-                    onClick={leaveGame}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Leave Game
-                  </button>
                 </div>
 
+                {notification && (
+                  <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
+                    {notification}
+                  </div>
+                )}
+
                 {gameState === 'waiting' && !opponentName && (
-                  <div className="text-center">
+                  <div className="text-center space-y-4">
                     <p>Waiting for opponent...</p>
+                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
                   </div>
                 )}
 
@@ -366,44 +372,61 @@ export default function Game() {
                         </button>
                       ))}
                     </div>
+                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
                   </div>
                 )}
 
                 {gameState === 'playing' && playerChoice && (
-                  <div className="text-center">
+                  <div className="text-center space-y-4">
                     <p>Waiting for opponent's choice...</p>
                     <p>Your choice: {playerChoice}</p>
                     {opponentName && <p>Opponent: {opponentName}</p>}
+                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
                   </div>
                 )}
 
                 {gameState === 'finished' && (
                   <div className="space-y-4">
-                    <div className="text-center">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-semibold">Game Results</h3>
                       <p>Your choice: {playerChoice}</p>
                       <p>Opponent's choice: {opponentChoice}</p>
-                      <p className="text-xl font-bold">
-                        {result === 'win' && 'You won!'}
-                        {result === 'lose' && 'You lost!'}
-                        {result === 'tie' && "It's a tie!"}
+                      <p className={`text-lg font-bold ${
+                        result === 'win' ? 'text-green-600' :
+                        result === 'lose' ? 'text-red-600' :
+                        'text-blue-600'
+                      }`}>
+                        {result === 'win' ? 'You Won!' :
+                         result === 'lose' ? 'You Lost!' :
+                         'It\'s a Tie!'}
                       </p>
-                      {!opponentName && <p className="text-red-500">Opponent has left the game</p>}
                     </div>
+
                     <div className="space-y-2">
+                      {wantsToPlayAgain && !opponentWantsToPlayAgain && (
+                        <p className="text-center text-gray-600 mb-2">
+                          Waiting for opponent to accept...
+                        </p>
+                      )}
+                      {opponentWantsToPlayAgain && !wantsToPlayAgain && (
+                        <p className="text-center text-green-600 mb-2">
+                          Opponent wants to play again!
+                        </p>
+                      )}
+
                       <button
                         onClick={playAgain}
-                        className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                        disabled={wantsToPlayAgain || opponentLeft}
+                        className={`w-full px-4 py-2 rounded 
+                          ${wantsToPlayAgain || opponentLeft
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-green-500 hover:bg-green-600'} 
+                          text-white`}
                       >
-                        {wantsToPlayAgain ? 'Waiting for opponent to accept...' : 
-                         opponentWantsToPlayAgain ? 'Opponent wants to play again!' : 
-                         'Play Again'}
+                        {opponentLeft ? 'Opponent Left' : 'Play Again'}
                       </button>
-                      <button
-                        onClick={leaveGame}
-                        className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                      >
-                        Leave Game
-                      </button>
+
+                      <LeaveGameButton onClick={leaveGame} gameState={gameState} />
                     </div>
                   </div>
                 )}

@@ -9,6 +9,7 @@ export default function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [message, setMessage] = useState('')
   const { signup, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
 
@@ -46,10 +47,12 @@ export default function Register() {
     try {
       setError('')
       setLoading(true)
-      await signup(email, password)
-      navigate('/')
+      const result = await signup(email, password)
+      setMessage(result.message)
+      // Redirect to login after 3 seconds
+      setTimeout(() => navigate('/login'), 3000)
     } catch (error) {
-      setError('Failed to create an account: ' + error.message)
+      setError('Failed to start registration: ' + error.message)
     }
     setLoading(false)
   }
@@ -77,6 +80,11 @@ export default function Register() {
                 {error && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                     {error}
+                  </div>
+                )}
+                {message && (
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+                    {message}
                   </div>
                 )}
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -121,7 +129,7 @@ export default function Register() {
                     type="submit"
                     className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Creating account...' : 'Create account'}
+                    {loading ? 'Sending verification email...' : 'Start Registration'}
                   </button>
                 </form>
 
