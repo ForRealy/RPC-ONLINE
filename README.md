@@ -25,7 +25,7 @@ A real-time multiplayer Rock Paper Scissors game built with React, Firebase, and
 
 1. Clone the repository
 ```bash
-git clone [repository-url]
+git clone https://github.com/ForRealy/RPC-ONLINE
 ```
 
 2. Install dependencies
@@ -82,7 +82,7 @@ npm run dev
 ## Attributions
 
 ### Icons and Images
-- Game icons (rock, paper, scissors) from [Source Name]
+- Game icons (rock, paper, scissors) from https://www.flaticon.com/
 - Confetti animation from [react-confetti](https://github.com/alampros/react-confetti)
 
 ### Libraries
