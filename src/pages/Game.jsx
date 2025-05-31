@@ -2,7 +2,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { database } from '../config/firebase'
-import { ref, set, onValue, remove, query, orderByChild, equalTo, get, update, serverTimestamp } from 'firebase/database'
+import {
+  ref,
+  set,
+  onValue,
+  remove,
+  query,
+  orderByChild,
+  equalTo,
+  get,
+  update,
+  serverTimestamp
+} from 'firebase/database'
 import LeaveGameButton from '../components/LeaveGameButton'
 
 const CHOICES = ['rock', 'paper', 'scissors']
@@ -22,13 +33,15 @@ export default function Game() {
   const { currentUser } = useAuth()
   const navigate = useNavigate()
   const [notification, setNotification] = useState('')
+  const [displayPlayerChoice, setDisplayPlayerChoice] = useState(null)
+const [displayOpponentChoice, setDisplayOpponentChoice] = useState(null)
+
 
   const findOrCreateGame = useCallback(async () => {
     if (!currentUser || isSearching || gameInitialized.current) return
 
     setIsSearching(true)
     try {
-      // Try to find a waiting game
       const gamesRef = ref(database, 'games')
       const waitingGamesQuery = query(
         gamesRef,
@@ -39,7 +52,6 @@ export default function Game() {
       const snapshot = await get(waitingGamesQuery)
       let gameToJoin = null
 
-      // Find a game that doesn't have the current player and is not full
       snapshot.forEach((gameSnapshot) => {
         const game = gameSnapshot.val()
         const playerCount = Object.keys(game.players || {}).length
@@ -65,7 +77,8 @@ export default function Game() {
         gameInitialized.current = true
       } else {
         // Create new game
-        const newGameRef = ref(database, 'games/' + Date.now())
+        const timestamp = Date.now().toString()
+        const newGameRef = ref(database, `games/${timestamp}`)
         await set(newGameRef, {
           players: {
             [currentUser.uid]: {
@@ -79,7 +92,7 @@ export default function Game() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         })
-        setGameId(newGameRef.key)
+        setGameId(timestamp)
         gameInitialized.current = true
       }
     } catch (error) {
@@ -97,7 +110,12 @@ export default function Game() {
 
     // Only initialize game if we're not navigating away
     const isNavigating = window.location.pathname !== '/game'
-    if (!gameInitialized.current && !opponentLeft && !isNavigating && gameState === 'waiting') {
+    if (
+      !gameInitialized.current &&
+      !opponentLeft &&
+      !isNavigating &&
+      gameState === 'waiting'
+    ) {
       findOrCreateGame()
     }
 
@@ -124,10 +142,10 @@ export default function Game() {
 
         const players = game.players || {}
         const playerIds = Object.keys(players)
+        const opponentId = playerIds.find(
+          (id) => id !== currentUser.uid
+        )
 
-        // Find opponent
-        const opponentId = playerIds.find(id => id !== currentUser.uid)
-        
         if (opponentId) {
           setOpponentName(players[opponentId].name)
           if (players[opponentId]?.choice) {
@@ -135,35 +153,45 @@ export default function Game() {
           } else {
             setOpponentChoice(null)
           }
-          setOpponentWantsToPlayAgain(players[opponentId]?.wantsToPlayAgain || false)
+          setOpponentWantsToPlayAgain(
+            players[opponentId]?.wantsToPlayAgain || false
+          )
           setOpponentLeft(false)
           setGameState(game.status)
-        } else if (gameState === 'playing' || gameState === 'finished') {
-          // Only update if we were in a game
+        } else if (
+          gameState === 'playing' ||
+          gameState === 'finished'
+        ) {
+          // Opponent left mid-game
           setOpponentName(null)
           setOpponentWantsToPlayAgain(false)
           setOpponentLeft(true)
           setGameState('finished')
           setNotification('Opponent has left the game')
-          // Clear notification after 3 seconds
           setTimeout(() => setNotification(''), 3000)
         }
 
-        // Check if both players have made their choices
-        if (game.status === 'playing' &&
-            playerIds.length === 2 &&
-            players[currentUser.uid]?.choice &&
-            players[opponentId]?.choice) {
-          determineWinner(players[currentUser.uid].choice, players[opponentId].choice)
+        // If both players made choices, compute winner
+        if (
+          game.status === 'playing' &&
+          playerIds.length === 2 &&
+          players[currentUser.uid]?.choice &&
+          players[opponentId]?.choice
+        ) {
+          determineWinner(
+            players[currentUser.uid].choice,
+            players[opponentId].choice
+          )
         }
 
-        // Check if both players want to play again
-        if (game.status === 'finished' && 
-            players[currentUser.uid]?.wantsToPlayAgain && 
-            players[opponentId]?.wantsToPlayAgain) {
-          // Reset the game for both players
-          const gameRef = ref(database, `games/${gameId}`)
-          update(gameRef, {
+        // If both players want to play again, reset state on server
+        if (
+          game.status === 'finished' &&
+          players[currentUser.uid]?.wantsToPlayAgain &&
+          players[opponentId]?.wantsToPlayAgain
+        ) {
+          const resetRef = ref(database, `games/${gameId}`)
+          update(resetRef, {
             status: 'playing',
             [`players/${currentUser.uid}`]: {
               choice: null,
@@ -180,7 +208,7 @@ export default function Game() {
             result: null,
             updatedAt: serverTimestamp()
           }).then(() => {
-            // Reset local state after successful update
+            // Now that Firebase has reset the game, clear local state:
             setPlayerChoice(null)
             setOpponentChoice(null)
             setResult(null)
@@ -195,14 +223,24 @@ export default function Game() {
         unsubscribe()
       }
     }
-  }, [currentUser, gameId, findOrCreateGame, gameState])
+  }, [
+    currentUser,
+    gameId,
+    findOrCreateGame,
+    gameState,
+    opponentLeft,
+    navigate
+  ])
 
   const makeChoice = async (choice) => {
     if (!gameId || !currentUser) return
 
     setPlayerChoice(choice)
-    const gameRef = ref(database, `games/${gameId}/players/${currentUser.uid}`)
-    await update(gameRef, {
+    const playerRef = ref(
+      database,
+      `games/${gameId}/players/${currentUser.uid}`
+    )
+    await update(playerRef, {
       choice,
       ready: true,
       name: currentUser.email
@@ -210,89 +248,96 @@ export default function Game() {
   }
 
   const determineWinner = async (player1Choice, player2Choice) => {
-    let result
-    if (player1Choice === player2Choice) {
-      result = 'tie'
-    } else if (
-      (player1Choice === 'rock' && player2Choice === 'scissors') ||
-      (player1Choice === 'paper' && player2Choice === 'rock') ||
-      (player1Choice === 'scissors' && player2Choice === 'paper')
-    ) {
-      result = 'win'
-    } else {
-      result = 'lose'
-    }
-
-    setResult(result)
-    setGameState('finished')
-
-    const gameRef = ref(database, `games/${gameId}`)
-    await update(gameRef, {
-      status: 'finished',
-      result: result,
-      updatedAt: serverTimestamp()
-    })
+  let resultValue
+  if (player1Choice === player2Choice) {
+    resultValue = 'tie'
+  } else if (
+    (player1Choice === 'rock' && player2Choice === 'scissors') ||
+    (player1Choice === 'paper' && player2Choice === 'rock') ||
+    (player1Choice === 'scissors' && player2Choice === 'paper')
+  ) {
+    resultValue = 'win'
+  } else {
+    resultValue = 'lose'
   }
+
+  setResult(resultValue)
+  setGameState('finished')
+
+  // Capture last choices for display
+  setDisplayPlayerChoice(player1Choice)
+  setDisplayOpponentChoice(player2Choice)
+
+  const gameRef = ref(database, `games/${gameId}`)
+  await update(gameRef, {
+    status: 'finished',
+    result: resultValue,
+    updatedAt: serverTimestamp()
+  })
+}
+
 
   const playAgain = async () => {
     if (!currentUser) return
 
-    // If opponent left or no game, start a new game
+    // If opponent left or no game, start a fresh search
     if (opponentLeft || !gameId) {
-      // Remove the current game if it exists
       if (gameId) {
         const gameRef = ref(database, `games/${gameId}`)
-        await remove(gameRef).catch(error => console.error("Error removing game:", error))
+        await remove(gameRef).catch((error) =>
+          console.error('Error removing game:', error)
+        )
       }
-
-      // Reset all state
       setGameId(null)
-      setPlayerChoice(null)
-      setOpponentChoice(null)
-      setResult(null)
+ 
+      
       setGameState('waiting')
       setOpponentName(null)
       setWantsToPlayAgain(false)
       setOpponentWantsToPlayAgain(false)
       setOpponentLeft(false)
       gameInitialized.current = false
-
-      // Start a new game
       findOrCreateGame()
       return
     }
 
-    // Mark that this player wants to play again
-    const gameRef = ref(database, `games/${gameId}/players/${currentUser.uid}`)
-    await update(gameRef, {
-      wantsToPlayAgain: true,
-      choice: null,
-      ready: false
-    })
-    setWantsToPlayAgain(true)
-  }
+    // In a normal “play again” scenario, just clear the result text.
+    // We leave the last‐round images visible until the server flips us back to "playing."
+    setResult(null)
+
+    const playerRef = ref(database, `games/${gameId}/players/${currentUser.uid}`)
+  await update(playerRef, {
+    wantsToPlayAgain: true,
+    choice: null,
+    ready: false
+  })
+  setWantsToPlayAgain(true)
+}
 
   const leaveGame = async () => {
     if (!gameId || !currentUser) return
 
-    // First navigate to menu to prevent any game initialization
     navigate('/')
 
-    // Then handle the cleanup
-    const playerRef = ref(database, `games/${gameId}/players/${currentUser.uid}`)
-    await remove(playerRef).catch(error => console.error("Error removing player:", error))
+    const playerRef = ref(
+      database,
+      `games/${gameId}/players/${currentUser.uid}`
+    )
+    await remove(playerRef).catch((error) =>
+      console.error('Error removing player:', error)
+    )
 
-    // Check if there are any players left
     const gameRef = ref(database, `games/${gameId}`)
     const snapshot = await get(gameRef)
-    const game = snapshot.val()
-    
-    // If no players left, remove the game
-    if (!game || !game.players || Object.keys(game.players).length === 0) {
-      await remove(gameRef).catch(error => console.error("Error removing game:", error))
+    const gameData = snapshot.val()
+    if (!gameData || !gameData.players || 
+        Object.keys(gameData.players).length === 0) {
+      await remove(gameRef).catch((error) =>
+        console.error('Error removing game:', error)
+      )
     }
 
-    // Reset all state
+    // Reset all local state
     setGameId(null)
     setPlayerChoice(null)
     setOpponentChoice(null)
@@ -306,28 +351,34 @@ export default function Game() {
     setIsSearching(false)
   }
 
-  // Handle player leaving the game gracefully
+  // Handle “tab closed” cleanup
   useEffect(() => {
     const handleBeforeUnload = async () => {
       if (gameId && currentUser) {
-        // Remove the current player from the game
-        const playerRef = ref(database, `games/${gameId}/players/${currentUser.uid}`)
-        await remove(playerRef).catch(error => console.error("Error removing player on unload:", error))
+        const playerRef = ref(
+          database,
+          `games/${gameId}/players/${currentUser.uid}`
+        )
+        await remove(playerRef).catch((error) =>
+          console.error('Error removing player on unload:', error)
+        )
 
-        // Check if there are any players left
         const gameRef = ref(database, `games/${gameId}`)
         const snapshot = await get(gameRef)
-        const game = snapshot.val()
-        
-        // If no players left, remove the game
-        if (!game || !game.players || Object.keys(game.players).length === 0) {
-          await remove(gameRef).catch(error => console.error("Error removing game on unload:", error))
+        const gameData = snapshot.val()
+        if (
+          !gameData ||
+          !gameData.players ||
+          Object.keys(gameData.players).length === 0
+        ) {
+          await remove(gameRef).catch((error) =>
+            console.error('Error removing game on unload:', error)
+          )
         }
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
@@ -341,7 +392,9 @@ export default function Game() {
             <div className="divide-y divide-gray-200">
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold">Rock Paper Scissors</h2>
+                  <h2 className="text-2xl font-bold">
+                    Rock Paper Scissors
+                  </h2>
                 </div>
 
                 {notification && (
@@ -353,14 +406,21 @@ export default function Game() {
                 {gameState === 'waiting' && !opponentName && (
                   <div className="text-center space-y-4">
                     <p>Waiting for opponent...</p>
-                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
+                    <LeaveGameButton
+                      onClick={leaveGame}
+                      gameState={gameState}
+                    />
                   </div>
                 )}
 
                 {gameState === 'playing' && !playerChoice && (
                   <div className="space-y-4">
                     <p className="text-center">Make your choice:</p>
-                    {opponentName && <p className="text-center">Playing against: {opponentName}</p>}
+                    {opponentName && (
+                      <p className="text-center">
+                        Playing against: {opponentName}
+                      </p>
+                    )}
                     <div className="flex justify-center space-x-8">
                       {CHOICES.map((choice) => (
                         <button
@@ -373,14 +433,17 @@ export default function Game() {
                             alt={choice}
                             className="w-24 h-24 object-contain"
                             onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `/images/${choice}.jpg`;
+                              e.target.onerror = null
+                              e.target.src = `/images/${choice}.png`
                             }}
                           />
                         </button>
                       ))}
                     </div>
-                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
+                    <LeaveGameButton
+                      onClick={leaveGame}
+                      gameState={gameState}
+                    />
                   </div>
                 )}
 
@@ -390,101 +453,117 @@ export default function Game() {
                     <div className="flex justify-around">
                       <div className="flex flex-col items-center">
                         <p className="font-semibold">You</p>
-                        <img 
-                          src={`/images/${playerChoice}.png`} 
-                          alt={playerChoice} 
-                          className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                        <img
+                          src={`/images/${playerChoice}.png`}
+                          alt={playerChoice}
+                          className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300"
                           onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = `/images/${playerChoice}.jpg`;
+                            e.target.onerror = null
+                            e.target.src = `/images/${playerChoice}.png`
                           }}
                         />
                       </div>
                       <div className="flex flex-col items-center">
                         <p className="font-semibold">Opponent</p>
                         {opponentChoice && (
-                          <img 
-                            src={`/images/${opponentChoice}.png`} 
-                            alt={opponentChoice} 
-                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
+                          <img
+                            src={`/images/${opponentChoice}.png`}
+                            alt={opponentChoice}
+                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300"
                             onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `/images/${opponentChoice}.jpg`;
+                              e.target.onerror = null
+                              e.target.src = `/images/${opponentChoice}.png`
                             }}
                           />
                         )}
                       </div>
                     </div>
-                    <LeaveGameButton onClick={leaveGame} gameState={gameState} />
+                    <LeaveGameButton
+                      onClick={leaveGame}
+                      gameState={gameState}
+                    />
                   </div>
                 )}
 
                 {gameState === 'finished' && (
-                  <div className="space-y-4">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl font-semibold">Game Results</h3>
-                      <div className="flex justify-around">
-                        <div className="flex flex-col items-center">
-                          <p className="font-semibold">You</p>
-                          <img 
-                            src={`/images/${playerChoice}.png`} 
-                            alt={playerChoice} 
-                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `/images/${playerChoice}.jpg`;
-                            }}
-                          />
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <p className="font-semibold">Opponent</p>
-                          <img 
-                            src={`/images/${opponentChoice}.png`} 
-                            alt={opponentChoice} 
-                            className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300" 
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `/images/${opponentChoice}.jpg`;
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <p className={`text-2xl font-bold ${
-                        result === 'win' ? 'text-green-600' :
-                        result === 'lose' ? 'text-red-600' :
-                        'text-blue-600'
-                      }`}>
-                        {result === 'win' ? 'You Won! 🎉' :
-                         result === 'lose' ? 'You Lost! 😢' :
-                         'It\'s a Tie! 🤝'}
-                      </p>
-                    </div>
+  <div className="space-y-4">
+    <div className="text-center space-y-2">
+      <h3 className="text-xl font-semibold">
+        Game Results
+      </h3>
+      <div className="flex justify-around">
+        <div className="flex flex-col items-center">
+          <p className="font-semibold">You</p>
+          {displayPlayerChoice && (
+            <img
+              src={`/images/${displayPlayerChoice}.png`}
+              alt={displayPlayerChoice}
+              className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300"
+            />
+          )}
+        </div>
+        <div className="flex flex-col items-center">
+          <p className="font-semibold">Opponent</p>
+          {displayOpponentChoice && (
+            <img
+              src={`/images/${displayOpponentChoice}.png`}
+              alt={displayOpponentChoice}
+              className="w-24 h-24 object-contain transform hover:scale-110 transition-all duration-300"
+            />
+          )}
+        </div>
+      </div>
+
+      <p
+        className={`text-2xl font-bold ${
+          result === 'win'
+            ? 'text-green-600'
+            : result === 'lose'
+            ? 'text-red-600'
+            : 'text-blue-600'
+        }`}
+      >
+        {result === 'win'
+          ? 'You Won! 🎉'
+          : result === 'lose'
+          ? 'You Lost! 😢'
+          : "It's a Tie! 🤝"}
+      </p>
+    </div>
+
 
                     <div className="space-y-2">
-                      {wantsToPlayAgain && !opponentWantsToPlayAgain && (
-                        <p className="text-center text-gray-600 mb-2">
-                          Waiting for opponent to accept...
-                        </p>
-                      )}
-                      {opponentWantsToPlayAgain && !wantsToPlayAgain && (
-                        <p className="text-center text-green-600 mb-2">
-                          Opponent wants to play again!
-                        </p>
-                      )}
+                      {wantsToPlayAgain &&
+                        !opponentWantsToPlayAgain && (
+                          <p className="text-center text-gray-600 mb-2">
+                            Waiting for opponent to accept...
+                          </p>
+                        )}
+                      {opponentWantsToPlayAgain &&
+                        !wantsToPlayAgain && (
+                          <p className="text-center text-green-600 mb-2">
+                            Opponent wants to play again!
+                          </p>
+                        )}
 
                       <button
                         onClick={playAgain}
                         disabled={wantsToPlayAgain || opponentLeft}
                         className={`w-full px-4 py-2 rounded transform hover:scale-105 transition-all duration-300
-                          ${wantsToPlayAgain || opponentLeft
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-green-500 hover:bg-green-600'} 
+                          ${
+                            wantsToPlayAgain || opponentLeft
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-green-500 hover:bg-green-600'
+                          } 
                           text-white font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50`}
                       >
                         {opponentLeft ? 'Opponent Left' : 'Play Again'}
                       </button>
 
-                      <LeaveGameButton onClick={leaveGame} gameState={gameState} />
+                      <LeaveGameButton
+                        onClick={leaveGame}
+                        gameState={gameState}
+                      />
                     </div>
                   </div>
                 )}
@@ -495,4 +574,4 @@ export default function Game() {
       </div>
     </div>
   )
-} 
+}
