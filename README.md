@@ -1,6 +1,7 @@
 # Rock Paper Scissors Multiplayer Game
 
 A real-time multiplayer Rock Paper Scissors game built with React, Firebase, and Tailwind CSS.
+https://rps2v2-1bba0.web.app/
 
 ## Features
 
